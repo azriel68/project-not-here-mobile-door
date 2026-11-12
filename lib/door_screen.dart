@@ -195,139 +195,260 @@ class _DoorScreenState extends State<DoorScreen> with WidgetsBindingObserver {
 
     if (access.doors.length == 1) {
       final door = access.doors.single;
-      return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(door.label,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 14),
-            notice,
-            Expanded(child: _openButton(door, access, big: true)),
-            const SizedBox(height: 16),
-            Expanded(child: _closeButton(door, access, big: true)),
-          ],
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _DoorBadge(size: 96),
+              const SizedBox(height: 18),
+              Text(door.label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.w800, color: ink)),
+              const SizedBox(height: 28),
+              notice,
+              _buttons(door, access, height: 92),
+            ],
+          ),
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        notice,
-        for (final door in access.doors)
-          Card(
-            margin: const EdgeInsets.only(bottom: 14),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.door_front_door_outlined, color: forest),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: Text(door.label,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 18))),
-                  ]),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 76,
-                    child: Row(children: [
-                      Expanded(child: _openButton(door, access)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _closeButton(door, access)),
-                    ]),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            notice,
+            for (final door in access.doors)
+              Card(
+                margin: const EdgeInsets.only(bottom: 14),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(children: [
+                        const _DoorBadge(size: 36),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: Text(door.label,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17,
+                                    color: ink))),
+                      ]),
+                      const SizedBox(height: 16),
+                      _buttons(door, access, height: 60),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _openButton(Door door, DoorAccess access, {bool big = false}) =>
-      _DoorButton(
-        key: ValueKey('open-${door.id}'),
-        label: 'Ouvrir',
-        icon: Icons.lock_open,
-        background: forest,
-        foreground: lime,
-        big: big,
-        working: _workingDoorId == door.id,
-        onPressed: _workingDoorId != null || !access.canOpen
-            ? null
-            : () => _command(door, open: true),
-      );
+  /// Open and close side by side, with a clear gap between them so a
+  /// thumb cannot press both, and a size that is easy but deliberate to hit.
+  Widget _buttons(Door door, DoorAccess access, {required double height}) {
+    final working = _workingDoorId == door.id;
+    final busy = _workingDoorId != null;
+    return SizedBox(
+      height: height,
+      child: Row(children: [
+        Expanded(
+          child: _DoorButton(
+            key: ValueKey('open-${door.id}'),
+            label: 'Ouvrir',
+            icon: Icons.lock_open_rounded,
+            top: const Color(0xFF2C6E5F),
+            bottom: forest,
+            foreground: lime,
+            working: working,
+            onPressed: busy || !access.canOpen
+                ? null
+                : () => _command(door, open: true),
+          ),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: _DoorButton(
+            key: ValueKey('close-${door.id}'),
+            label: 'Fermer',
+            icon: Icons.lock_rounded,
+            top: const Color(0xFF3A4A44),
+            bottom: ink,
+            foreground: Colors.white,
+            working: working,
+            onPressed: busy || !access.canClose
+                ? null
+                : () => _command(door, open: false),
+          ),
+        ),
+      ]),
+    );
+  }
+}
 
-  Widget _closeButton(Door door, DoorAccess access, {bool big = false}) =>
-      _DoorButton(
-        key: ValueKey('close-${door.id}'),
-        label: 'Fermer',
-        icon: Icons.lock_outline,
-        background: ink,
-        foreground: Colors.white,
-        big: big,
-        working: _workingDoorId == door.id,
-        onPressed: _workingDoorId != null || !access.canClose
-            ? null
-            : () => _command(door, open: false),
+class _DoorBadge extends StatelessWidget {
+  const _DoorBadge({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFE6F5A8), lime]),
+            boxShadow: [
+              BoxShadow(
+                  color: forest.withOpacity(0.18),
+                  blurRadius: size / 5,
+                  offset: Offset(0, size / 16)),
+            ],
+          ),
+          child: Icon(Icons.door_front_door_rounded,
+              size: size * 0.52, color: forest),
+        ),
       );
 }
 
-class _DoorButton extends StatelessWidget {
+/// A raised, glossy key: vertical gradient for volume, a soft highlight on
+/// the upper half as a reflection, a drop shadow, and a pressed state that
+/// sinks the button.
+class _DoorButton extends StatefulWidget {
   const _DoorButton(
       {super.key,
       required this.label,
       required this.icon,
-      required this.background,
+      required this.top,
+      required this.bottom,
       required this.foreground,
-      required this.big,
       required this.working,
       required this.onPressed});
   final String label;
   final IconData icon;
-  final Color background;
+  final Color top;
+  final Color bottom;
   final Color foreground;
-  final bool big;
   final bool working;
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: background,
-          foregroundColor: foreground,
-          disabledBackgroundColor: background.withOpacity(0.25),
-          disabledForegroundColor: Colors.white70,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(big ? 28 : 18)),
+  State<_DoorButton> createState() => _DoorButtonState();
+}
+
+class _DoorButtonState extends State<_DoorButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (widget.onPressed != null && _pressed != value) {
+      setState(() => _pressed = value);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onPressed != null;
+    final radius = BorderRadius.circular(20);
+    final depth = _pressed ? 1.0 : 5.0;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        onTap: widget.onPressed,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: enabled || widget.working ? 1 : 0.38,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 90),
+            margin: EdgeInsets.only(top: 5 - depth, bottom: depth),
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [widget.top, widget.bottom]),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              boxShadow: [
+                // Solid base under the key: the relief.
+                BoxShadow(
+                    color: Color.lerp(widget.bottom, Colors.black, 0.45)!,
+                    offset: Offset(0, depth)),
+                // Soft cast shadow.
+                BoxShadow(
+                    color: widget.bottom.withOpacity(_pressed ? 0.15 : 0.3),
+                    blurRadius: _pressed ? 4 : 14,
+                    offset: Offset(0, depth + 3)),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: Stack(fit: StackFit.expand, children: [
+                // Reflection on the upper half.
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: 0.5,
+                    widthFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white.withOpacity(0.22),
+                              Colors.white.withOpacity(0.03),
+                            ]),
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: widget.working
+                      ? SizedBox.square(
+                          dimension: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: widget.foreground))
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(widget.icon,
+                                color: widget.foreground, size: 24),
+                            const SizedBox(width: 8),
+                            Text(widget.label,
+                                style: TextStyle(
+                                    color: widget.foreground,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.3)),
+                          ],
+                        ),
+                ),
+              ]),
+            ),
+          ),
         ),
-        child: working
-            ? SizedBox.square(
-                dimension: big ? 36 : 22,
-                child: CircularProgressIndicator(
-                    strokeWidth: 3, color: foreground))
-            : Flex(
-                direction: big ? Axis.vertical : Axis.horizontal,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: big ? 64 : 26),
-                  SizedBox(width: 8, height: big ? 12 : 0),
-                  Text(label,
-                      style: TextStyle(
-                          fontSize: big ? 30 : 18,
-                          fontWeight: FontWeight.w800)),
-                ],
-              ),
-      );
+      ),
+    );
+  }
 }
 
 class _Message extends StatelessWidget {

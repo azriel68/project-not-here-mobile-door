@@ -31,7 +31,7 @@ Future<void> pumpDoors(
 }
 
 void main() {
-  testWidgets('one door shows two large buttons', (tester) async {
+  testWidgets('one door shows two buttons', (tester) async {
     final controller = FakeDoorController(const DoorAccess(
         doors: [Door(id: 1, label: 'Entrée')], canOpen: true, canClose: true));
     await pumpDoors(tester, controller);
@@ -39,8 +39,8 @@ void main() {
     expect(find.text('Entrée'), findsOneWidget);
     expect(find.text('Ouvrir'), findsOneWidget);
     expect(find.text('Fermer'), findsOneWidget);
-    expect(tester.getSize(find.byKey(const ValueKey('open-1'))).height,
-        greaterThan(150));
+    final size = tester.getSize(find.byKey(const ValueKey('open-1')));
+    expect(size.height, inInclusiveRange(80, 100));
 
     await tester.tap(find.text('Ouvrir'));
     await tester.pumpAndSettle();
@@ -59,13 +59,10 @@ void main() {
 
     expect(find.text('Ouvrir'), findsNWidgets(2));
     expect(find.text('Fermer'), findsNWidgets(2));
-    expect(
-        tester
-            .widget<FilledButton>(find.descendant(
-                of: find.byKey(const ValueKey('open-2')),
-                matching: find.byType(FilledButton)))
-            .onPressed,
-        isNull);
+    // Opening is outside the allowed time range: the button does nothing.
+    await tester.tap(find.byKey(const ValueKey('open-2')));
+    await tester.pumpAndSettle();
+    expect(controller.commands, isEmpty);
 
     await tester.tap(find.byKey(const ValueKey('close-2')));
     await tester.pumpAndSettle();
