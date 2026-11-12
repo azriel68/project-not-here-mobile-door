@@ -44,3 +44,4 @@ app.*.map.json
 
 # Local app configuration
 .env.local
+apk-release/

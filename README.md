@@ -41,3 +41,13 @@ flutter build apk --debug
 The debug APK is written to `build/app/outputs/flutter-apk/app-debug.apk`.
 
 Android builds use compile SDK 34 and Kotlin Gradle plugin 1.9.0 to satisfy the location plugin requirements. Android application ID / iOS bundle ID: `com.dollydesk.door`. `.env.local` must exist to build (copy it from `.env.local.example`). iOS builds require macOS and Xcode.
+
+## Production APK
+
+Release builds are signed with the key described in `android/key.properties` (git-ignored, with the `.jks` it points to). Without that file, they fall back to the debug key. Keep the keystore and its passwords: every update must be signed with the same key.
+
+```powershell
+flutter build apk --release --dart-define=API_BASE_URL=https://api.relaiscoworking.fr/
+```
+
+The `--dart-define` pins the production API whatever `.env.local` says.
