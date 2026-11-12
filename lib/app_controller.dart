@@ -116,6 +116,7 @@ class AppController extends ChangeNotifier {
   static const _coworkKey = 'selected_cowork';
   static const _tokenKey = 'access_token';
   static const _emailKey = 'user_email';
+  static const _identityKey = 'user_identity';
 
   String apiBaseUrl;
   final String productionApiBaseUrl;
@@ -128,6 +129,33 @@ class AppController extends ChangeNotifier {
   bool isBusy = false;
 
   bool get isAuthenticated => token != null && selectedCowork != null;
+
+  String _userText(String key) => '${user[key] ?? ''}'.trim();
+
+  /// First name of the signed-in member, for the greeting on the door
+  /// screen; falls back to the email when the API gave none.
+  String get firstName =>
+      _userText('firstname').isNotEmpty ? _userText('firstname') : email;
+
+  /// Full name and email, so the person at the door can check whose
+  /// account opens it.
+  String get identity {
+    final name = '${_userText('firstname')} ${_userText('lastname')}'.trim();
+    final mail = _userText('email').isNotEmpty ? _userText('email') : email;
+    return [name, mail].where((part) => part.isNotEmpty).join(' · ');
+  }
+
+  /// Keeps who is signed in, so the greeting shows even when the app
+  /// starts offline and cannot reach GET /me.
+  Future<void> _setUser(Map<String, dynamic> value) async {
+    user = value;
+    await _storage.write(
+        key: _identityKey,
+        value: jsonEncode({
+          for (final key in const ['firstname', 'lastname', 'email'])
+            key: value[key],
+        }));
+  }
 
   bool get isProductionApi =>
       productionApiBaseUrl.isNotEmpty &&
@@ -149,6 +177,7 @@ class AppController extends ChangeNotifier {
     user = {};
     await _storage.delete(key: _coworkKey);
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _identityKey);
     await _storage.write(key: _apiKey, value: apiBaseUrl);
     notifyListeners();
   }
@@ -181,16 +210,26 @@ class AppController extends ChangeNotifier {
       }
       token = await _storage.read(key: _tokenKey);
       if (token == null) return;
+      try {
+        final savedIdentity = await _storage.read(key: _identityKey);
+        if (savedIdentity != null) {
+          user = Map<String, dynamic>.from(jsonDecode(savedIdentity) as Map);
+        }
+      } on FormatException {
+        await _storage.delete(key: _identityKey);
+      } on TypeError {
+        await _storage.delete(key: _identityKey);
+      }
       if (selectedCowork == null || apiBaseUrl.isEmpty) {
         await _clearStoredToken();
         return;
       }
       try {
         final response = await _dio.get<dynamic>('me', options: _authOptions);
-        user = Map<String, dynamic>.from(response.data as Map);
+        await _setUser(Map<String, dynamic>.from(response.data as Map));
       } on DioException catch (error) {
-        user = {};
         if (error.response?.statusCode == 401) {
+          user = {};
           await _clearStoredToken();
         }
       }
@@ -272,7 +311,7 @@ class AppController extends ChangeNotifier {
       }
       await _storage.write(key: _tokenKey, value: accessToken);
       token = accessToken;
-      user = Map<String, dynamic>.from(payload['user'] as Map);
+      await _setUser(Map<String, dynamic>.from(payload['user'] as Map));
       notifyListeners();
     } on DioException catch (error) {
       throw AppException(_messageFor(error,
@@ -300,6 +339,7 @@ class AppController extends ChangeNotifier {
   Future<void> _clearStoredToken() async {
     token = null;
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _identityKey);
   }
 
   Future<Map<String, dynamic>> getPlace() async {

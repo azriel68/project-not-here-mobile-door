@@ -5,7 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 class FakeDoorController extends AppController {
   FakeDoorController(this.access)
-      : super(initialApiBaseUrl: 'https://api.example.test/');
+      : super(initialApiBaseUrl: 'https://api.example.test/') {
+    user = {
+      'firstname': 'Camille',
+      'lastname': 'Martin',
+      'email': 'camille@example.test'
+    };
+  }
 
   final DoorAccess access;
   final commands = <String>[];
@@ -37,6 +43,8 @@ void main() {
     await pumpDoors(tester, controller);
 
     expect(find.text('Entrée'), findsOneWidget);
+    expect(find.text('Bonjour Camille,'), findsOneWidget);
+    expect(find.text('Camille Martin · camille@example.test'), findsOneWidget);
     expect(find.text('Ouvrir'), findsOneWidget);
     expect(find.text('Fermer'), findsOneWidget);
     final size = tester.getSize(find.byKey(const ValueKey('open-1')));

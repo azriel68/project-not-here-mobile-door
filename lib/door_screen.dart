@@ -202,6 +202,8 @@ class _DoorScreenState extends State<DoorScreen> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _Greeting(controller: widget.controller),
+              const SizedBox(height: 36),
               const _DoorBadge(size: 96),
               const SizedBox(height: 18),
               Text(door.label,
@@ -224,6 +226,8 @@ class _DoorScreenState extends State<DoorScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _Greeting(controller: widget.controller),
+            const SizedBox(height: 20),
             notice,
             for (final door in access.doors)
               Card(
@@ -295,6 +299,33 @@ class _DoorScreenState extends State<DoorScreen> with WidgetsBindingObserver {
       ]),
     );
   }
+}
+
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Bonjour ${controller.firstName},',
+              key: const ValueKey('greeting'),
+              style: const TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.w800, color: ink)),
+          if (controller.identity.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.verified_user_outlined, size: 16, color: forest),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: Text(controller.identity,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black54))),
+            ]),
+          ],
+        ],
+      );
 }
 
 class _DoorBadge extends StatelessWidget {

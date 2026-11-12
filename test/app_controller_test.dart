@@ -354,4 +354,44 @@ void main() {
     expect(storage.values.containsKey('access_token'), isFalse);
     expect(controller.selectedCowork, testCowork);
   });
+
+  test('remembers who is signed in for an offline start', () async {
+    final storage = MemoryAppStorage({
+      'selected_cowork': jsonEncode(testCowork.toJson()),
+      'user_email': 'camille@example.test',
+    });
+    final online = AppController(
+      storage: storage,
+      dio: dioWithResponder((options) async => Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'token': 'long-token',
+              'user': {
+                'firstname': 'Camille',
+                'lastname': 'Martin',
+                'email': 'camille@example.test',
+                'phone': '0600000000',
+              },
+            },
+          )),
+      initialApiBaseUrl: 'https://api.example.test/',
+    );
+    await online.initialize();
+    await online.login('camille@example.test', 'secret');
+    expect(online.firstName, 'Camille');
+
+    final offline = AppController(
+      storage: storage,
+      dio: dioWithResponder((options) async =>
+          Response(requestOptions: options, statusCode: 503)),
+      initialApiBaseUrl: 'https://api.example.test/',
+    );
+    await offline.initialize();
+
+    expect(offline.isAuthenticated, isTrue);
+    expect(offline.firstName, 'Camille');
+    expect(offline.identity, 'Camille Martin · camille@example.test');
+    expect(storage.values['user_identity'], isNot(contains('0600000000')));
+  });
 }
